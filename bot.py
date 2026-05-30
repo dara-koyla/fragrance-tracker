@@ -132,3 +132,7 @@ async def on_ready():
 
 
 bot.run(TOKEN)
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")

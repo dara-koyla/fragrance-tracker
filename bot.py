@@ -122,17 +122,9 @@ async def check_fragrantica():
 
 @bot.event
 async def on_ready():
-
     print(f"Logged in as {bot.user}")
 
-    await init_db()
+    channel = bot.get_channel(1510348121576837301)
 
-    if not check_fragrantica.is_running():
-        check_fragrantica.start()
-
-
-bot.run(TOKEN)
-
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user}")
+    if channel:
+        await channel.send("Bot startup test")

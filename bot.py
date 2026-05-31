@@ -171,6 +171,29 @@ async def status(ctx):
     await ctx.send("Fragrantica tracker is online.")
 
 
+@bot.command()
+async def debug(ctx):
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            "https://www.fragrantica.com/whats-new/",
+            headers=headers
+        ) as response:
+
+            html = await response.text()
+
+    await ctx.send(f"HTML length: {len(html)}")
+
+
+# -------------------------
+# EVENTS
+# -------------------------
+
+
 # ______new update section______________--
 @bot.command()
 async def check(ctx):

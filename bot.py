@@ -188,6 +188,28 @@ async def debug(ctx):
 
     await ctx.send(f"HTML length: {len(html)}")
 
+# added --- new lines here 
+@bot.command()
+async def debughtml(ctx):
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            "https://www.fragrantica.com/whats-new/",
+            headers=headers
+        ) as response:
+
+            html = await response.text()
+
+    snippet = html[:1500]
+
+    with open("debug.txt", "w", encoding="utf-8") as f:
+        f.write(snippet)
+
+    await ctx.send(file=discord.File("debug.txt"))
 
 # -------------------------
 # EVENTS

@@ -4,6 +4,7 @@ import aiosqlite
 import discord
 from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
+from playwright.async_api import async_playwright
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
@@ -210,6 +211,37 @@ async def debughtml(ctx):
         f.write(snippet)
 
     await ctx.send(file=discord.File("debug.txt"))
+
+@bot.command()
+async def status(ctx):
+    await ctx.send("VERSION 2")
+
+
+@bot.command()
+async def pwtest(ctx):
+
+    await ctx.send("Launching browser...")
+
+    async with async_playwright() as p:
+
+        browser = await p.chromium.launch(
+            headless=True
+        )
+
+        page = await browser.new_page()
+
+        await page.goto(
+            "https://www.fragrantica.com/whats-new/",
+            wait_until="networkidle",
+            timeout=60000
+        )
+
+        title = await page.title()
+
+        await browser.close()
+
+    await ctx.send(f"Page title: {title}")
+    
 
 # -------------------------
 # EVENTS

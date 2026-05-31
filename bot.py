@@ -1,10 +1,9 @@
-
 import os
 import aiohttp
 import aiosqlite
 import discord
 from bs4 import BeautifulSoup
-from discord.ext import tasks, commands
+from discord.ext import commands, tasks
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
@@ -13,26 +12,35 @@ CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "900"))
 URL = "https://www.fragrantica.com/whats-new/"
 
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="!", intents=intents)
+intents.message_content = True
 
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents
+)
+
+
+# -------------------------
+# DATABASE
+# -------------------------
 
 async def init_db():
     async with aiosqlite.connect("fragrances.db") as db:
         await db.execute("""
-        CREATE TABLE IF NOT EXISTS fragrances(
-            url TEXT PRIMARY KEY
-        )
+            CREATE TABLE IF NOT EXISTS fragrances(
+                url TEXT PRIMARY KEY
+            )
         """)
         await db.commit()
 
 
 async def exists(url):
     async with aiosqlite.connect("fragrances.db") as db:
-        cur = await db.execute(
+        cursor = await db.execute(
             "SELECT url FROM fragrances WHERE url=?",
             (url,)
         )
-        row = await cur.fetchone()
+        row = await cursor.fetchone()
         return row is not None
 
 
@@ -45,16 +53,24 @@ async def save(url):
         await db.commit()
 
 
+# -------------------------
+# SCRAPER
+# -------------------------
+
 async def fetch_launches():
 
     headers = {
-        "User-Agent":
-        "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0"
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(URL, headers=headers) as r:
-            html = await r.text()
+        async with session.get(
+            URL,
+            headers=headers,
+            timeout=30
+        ) as response:
+
+            html = await response.text()
 
     soup = BeautifulSoup(html, "html.parser")
 
@@ -80,19 +96,29 @@ async def fetch_launches():
             "url": href
         })
 
-    return launches
+    unique = {}
 
+    for item in launches:
+        unique[item["url"]] = item
+
+    return list(unique.values())
+
+
+# -------------------------
+# DISCORD NOTIFICATION
+# -------------------------
 
 async def notify(channel, item):
 
     embed = discord.Embed(
-        title="🆕 New Fragrance",
+        title="🆕 New Fragrance Added",
         description=item["title"],
-        url=item["url"]
+        url=item["url"],
+        color=0x5865F2
     )
 
     embed.add_field(
-        name="Fragrantica",
+        name="Fragrantica Link",
         value=item["url"],
         inline=False
     )
@@ -100,15 +126,24 @@ async def notify(channel, item):
     await channel.send(embed=embed)
 
 
+# -------------------------
+# CHECK LOOP
+# -------------------------
+
 @tasks.loop(seconds=CHECK_INTERVAL)
 async def check_fragrantica():
 
+    print("Checking Fragrantica...")
+
     channel = bot.get_channel(CHANNEL_ID)
 
-    if not channel:
+    if channel is None:
+        print("Channel not found")
         return
 
     launches = await fetch_launches()
+
+    print(f"Found {len(launches)} perfume links")
 
     for item in launches:
 
@@ -116,14 +151,49 @@ async def check_fragrantica():
             continue
 
         await save(item["url"])
+
+        print("New perfume:", item["title"])
+
         await notify(channel, item)
 
 
+# -------------------------
+# COMMANDS
+# -------------------------
+
+@bot.command()
+async def test(ctx):
+    await ctx.send("Bot is working.")
+
+
+@bot.command()
+async def status(ctx):
+    await ctx.send("Fragrantica tracker is online.")
+
+
+# -------------------------
+# EVENTS
+# -------------------------
+
 @bot.event
 async def on_ready():
+
     print(f"Logged in as {bot.user}")
 
-    channel = bot.get_channel(1510348121576837301)
+    channel = bot.get_channel(CHANNEL_ID)
 
     if channel:
-        await channel.send("Bot startup test")
+        await channel.send("✅ Fragrantica Tracker Started")
+
+    await init_db()
+
+    if not check_fragrantica.is_running():
+        check_fragrantica.start()
+
+
+# -------------------------
+# START BOT
+# -------------------------
+
+bot.run(TOKEN)
+

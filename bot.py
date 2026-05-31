@@ -171,6 +171,18 @@ async def status(ctx):
     await ctx.send("Fragrantica tracker is online.")
 
 
+# ______new update section______________--
+@bot.command()
+async def check(ctx):
+
+    launches = await fetch_launches()
+
+    await ctx.send(f"Found {len(launches)} perfume links")
+
+    if launches:
+        await ctx.send(
+            f"First result:\n{launches[0]['title']}\n{launches[0]['url']}"
+        )
 # -------------------------
 # EVENTS
 # -------------------------

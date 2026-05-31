@@ -2,7 +2,6 @@
 import os
 import aiohttp
 import aiosqlite
-import aiohttp
 import discord
 from bs4 import BeautifulSoup
 from discord.ext import tasks, commands
